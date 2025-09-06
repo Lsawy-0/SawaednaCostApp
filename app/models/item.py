@@ -1,5 +1,5 @@
 from app.extensions import db
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, select
 from .payment import Payment
 from .invoice_item import InvoiceItem
 from .invoice import Invoice
@@ -39,19 +39,19 @@ class Item(db.Model):
     
     @property
     def all_payments(self):
-        invoice_item_ids = db.session.query(InvoiceItem.id).filter(InvoiceItem.item_id == self.id)
+        invoice_item_ids_select = select(InvoiceItem.id).where(InvoiceItem.item_id == self.id)
         distributions = PaymentDistribution.query.filter(
-            PaymentDistribution.invoice_item_id.in_(invoice_item_ids)
+            PaymentDistribution.invoice_item_id.in_(invoice_item_ids_select)
         ).all()
         return distributions
 
     @property
     def paid_amount(self):
-        invoice_item_ids_subquery = db.session.query(InvoiceItem.id).filter(InvoiceItem.item_id == self.id).subquery()
+        invoice_item_ids_select = select(InvoiceItem.id).where(InvoiceItem.item_id == self.id)
         total_paid = db.session.query(
             func.sum(PaymentDistribution.amount)
         ).filter(
-            PaymentDistribution.invoice_item_id.in_(invoice_item_ids_subquery)
+            PaymentDistribution.invoice_item_id.in_(invoice_item_ids_select)
         ).scalar()
         return total_paid or 0.0
 
