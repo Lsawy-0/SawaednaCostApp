@@ -7,6 +7,13 @@ class Payment(db.Model):
     payment_date = db.Column(db.Date, nullable=False)
     description = db.Column(db.Text)
 
+    # --- START: الحقول الجديدة ---
+    # الرقم التسلسلي التلقائي للدفعة داخل المستخلص الواحد
+    payment_number = db.Column(db.Integer, nullable=True) 
+    # الرقم المرجعي اليدوي (رقم سند، حوالة، الخ)
+    reference_number = db.Column(db.String(100), nullable=True) 
+    # --- END: الحقول الجديدة ---
+
     invoice_id = db.Column(db.Integer, db.ForeignKey('invoice.id'), nullable=False)
     
     # Relationships
@@ -40,4 +47,3 @@ def receive_after_payment_change(mapper, connection, target):
         target.invoice.update_status()
         session.flush()
 # --- END: THE FINAL FIX ---
-

@@ -141,14 +141,14 @@
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm">
                                     <a href="{{ url_for('invoice.edit_item_from_invoice', invoice_item_id=inv_item.id) }}" 
-                                       class="btn btn-warning {% if invoice.is_fully_paid %}disabled{% endif %}" 
+                                       class="btn btn-warning {% if inv_item.distributions %}disabled{% endif %}" 
                                        title="تعديل كمية البند">
                                         <i class="fas fa-edit"></i>
                                     </a>
                                     <button type="button" class="btn btn-danger" 
                                             data-bs-toggle="modal" 
                                             data-bs-target="#deleteItemModal-{{ inv_item.id }}"
-                                            {% if invoice.is_fully_paid %}disabled{% endif %}
+                                            {% if inv_item.distributions %}disabled{% endif %}
                                             title="حذف البند من المستخلص">
                                         <i class="fas fa-trash"></i>
                                     </button>
@@ -170,7 +170,7 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h3 class="mb-0">سجل الدفعات</h3>
-        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addPaymentModal" {% if not invoice.items or invoice.is_fully_paid %}disabled{% endif %}>
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addPaymentModal" {% if not invoice.items or invoice.remaining_amount == 0 %}disabled{% endif %}>
             <i class="fas fa-plus me-1"></i> تسجيل دفعة جديدة
         </button>
     </div>
@@ -180,7 +180,9 @@
                 <table class="table table-dark table-hover mb-0">
                     <thead>
                         <tr>
+                            <th>رقم الدفعة</th>
                             <th>تاريخ الدفعة</th>
+                            <th>الرقم المرجعي</th>
                             <th>الوصف/البيان</th>
                             <th>البنود المرتبطة</th>
                             <th class="text-end">المبلغ</th>
@@ -188,9 +190,11 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for payment in invoice.payments %}
+                        {% for payment in invoice.payments|sort(attribute='payment_number') %}
                         <tr>
+                            <td><strong>#{{ payment.payment_number }}</strong></td>
                             <td>{{ payment.payment_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ payment.reference_number or '-' }}</td>
                             <td>{{ payment.description or '-' }}</td>
                             <td>
                                 <ul class="list-unstyled mb-0 small">
@@ -223,7 +227,6 @@
     </div>
 </div>
 
-<!-- Add/Edit Item Modals -->
 {% for inv_item in invoice.items %}
 <div class="modal fade" id="deleteItemModal-{{ inv_item.id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -243,14 +246,13 @@
 </div>
 {% endfor %}
 
-<!-- Payment Modals -->
 {% for payment in invoice.payments %}
 <div class="modal fade" id="deletePaymentModal-{{ payment.id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header"><h5 class="modal-title">تأكيد حذف الدفعة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
-                <p>هل أنت متأكد أنك تريد حذف الدفعة بمبلغ <strong>{{ "{:,.2f}".format(payment.amount) }}</strong>؟</p>
+                <p>هل أنت متأكد أنك تريد حذف الدفعة رقم <strong>#{{payment.payment_number}}</strong> بمبلغ <strong>{{ "{:,.2f}".format(payment.amount) }}</strong>؟</p>
                 <p class="text-danger">لا يمكن التراجع عن هذا الإجراء.</p>
             </div>
             <div class="modal-footer">
@@ -264,7 +266,6 @@
 </div>
 {% endfor %}
 
-<!-- START: New Add Payment Modal -->
 <div class="modal fade" id="addPaymentModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
@@ -275,11 +276,15 @@
                 </div>
                 <div class="modal-body">
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="payment_date" class="form-label">تاريخ الدفعة</label>
                             <input type="date" class="form-control" id="payment_date" name="payment_date" required>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label for="reference_number" class="form-label">الرقم المرجعي (اختياري)</label>
+                            <input type="text" class="form-control" id="reference_number" name="reference_number" placeholder="رقم سند الصرف، حوالة...">
+                        </div>
+                        <div class="col-md-4">
                             <label for="description" class="form-label">الوصف (اختياري)</label>
                             <input type="text" class="form-control" id="description" name="description">
                         </div>
@@ -297,7 +302,7 @@
                             </thead>
                             <tbody>
                                 {% for inv_item in invoice.items %}
-                                    {% if inv_item.remaining_amount > 0 %}
+                                    {% if inv_item.remaining_amount > 0.001 %}
                                     <tr>
                                         <td>{{ inv_item.description | truncate(70) }}</td>
                                         <td class="text-end">{{ "{:,.2f}".format(inv_item.remaining_amount) }}</td>
@@ -307,7 +312,7 @@
                                                    name="dist_item_{{ inv_item.id }}" 
                                                    step="0.01" 
                                                    min="0"
-                                                   max="{{ inv_item.remaining_amount }}"
+                                                   max="{{ '%.2f'|format(inv_item.remaining_amount) }}"
                                                    placeholder="0.00">
                                         </td>
                                     </tr>
@@ -331,7 +336,6 @@
         </div>
     </div>
 </div>
-<!-- END: New Add Payment Modal -->
 {% endblock %}
 
 {% block scripts %}
@@ -351,7 +355,6 @@ document.addEventListener("DOMContentLoaded", function() {
             });
             totalAmountDisplay.textContent = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             
-            // Enable/disable submit button
             submitBtn.disabled = total <= 0;
         }
 
@@ -369,16 +372,16 @@ document.addEventListener("DOMContentLoaded", function() {
             });
         });
 
-        // Set today's date on modal show
         paymentModal.addEventListener('shown.bs.modal', () => {
             const dateInput = paymentModal.querySelector('#payment_date');
-            dateInput.value = new Date().toISOString().slice(0, 10);
-            // Reset form on show
-            paymentModal.querySelector('#paymentForm').reset();
+            if (dateInput.value === '') {
+               dateInput.value = new Date().toISOString().slice(0, 10);
+            }
+            // Reset only distribution inputs on show
+            distInputs.forEach(input => input.value = '');
             updateTotal();
         });
     }
 });
 </script>
 {% endblock %}
-

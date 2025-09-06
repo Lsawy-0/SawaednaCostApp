@@ -18,7 +18,6 @@ from app import constants
 
 invoice_bp = Blueprint("invoice", __name__, url_prefix='/invoices')
 
-# --- START: THE FIX ---
 @invoice_bp.route("/project/<int:project_id>")
 @login_required
 def get_invoices_by_project(project_id):
@@ -79,7 +78,6 @@ def get_invoices_by_project(project_id):
                            invoices=invoices, 
                            filters=filters,
                            invoice_types=constants.INVOICE_TYPE_CHOICES)
-# --- END: THE FIX ---
 
 
 @invoice_bp.route("/new/project/<int:project_id>", methods=["GET", "POST"])
@@ -123,7 +121,6 @@ def new_invoice(project_id):
         flash("تم إنشاء المستخلص بنجاح. يمكنك الآن إضافة البنود إليه.", "success")
         return redirect(url_for("invoice.show_invoice", invoice_id=new_invoice_obj.id))
     
-    # Pass the suggested number to the template for pre-filling the field
     return render_template("invoices/new.html", project=project, form=form, next_invoice_number=form.invoice_number.data)
 
 
@@ -230,6 +227,7 @@ def add_payment_to_invoice(invoice_id):
 
     payment_date_str = request.form.get("payment_date")
     description = sanitize_input(request.form.get("description"))
+    reference_number = sanitize_input(request.form.get("reference_number"))
 
     if not payment_date_str:
         flash("تاريخ الدفعة حقل مطلوب.", "danger")
@@ -272,11 +270,18 @@ def add_payment_to_invoice(invoice_id):
         return redirect(url_for('invoice.show_invoice', invoice_id=invoice_id))
 
     try:
+        # --- START: حساب رقم الدفعة التلقائي ---
+        last_payment_number = db.session.query(func.max(Payment.payment_number)).filter_by(invoice_id=invoice.id).scalar() or 0
+        new_payment_number = last_payment_number + 1
+        # --- END: حساب رقم الدفعة التلقائي ---
+
         new_payment = Payment(
             invoice_id=invoice.id,
             amount=total_payment_amount,
             payment_date=payment_date,
-            description=description
+            description=description,
+            payment_number=new_payment_number,
+            reference_number=reference_number
         )
         db.session.add(new_payment)
         db.session.flush()
@@ -309,7 +314,10 @@ def edit_payment(payment_id):
         try:
             payment.payment_date = datetime.datetime.strptime(request.form.get("payment_date"), "%Y-%m-%d").date()
             payment.description = sanitize_input(request.form.get("description"))
-            
+            # --- START: تعديل الرقم المرجعي ---
+            payment.reference_number = sanitize_input(request.form.get("reference_number"))
+            # --- END: تعديل الرقم المرجعي ---
+
             new_total_amount = 0.0
             distributions_from_form = {} 
 
