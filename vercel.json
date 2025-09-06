@@ -3,10 +3,7 @@
   "builds": [
     {
       "src": "index.py",
-      "use": "@vercel/python",
-      "config": {
-        "prelude": "flask db upgrade"
-      }
+      "use": "@vercel/python"
     }
   ],
   "routes": [

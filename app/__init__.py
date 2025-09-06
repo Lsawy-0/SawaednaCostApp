@@ -2,6 +2,9 @@ from flask import Flask, redirect, url_for
 from flask_login import current_user
 from .extensions import db, migrate, login_manager
 from . import commands
+# --- START: Import the upgrade command ---
+from flask_migrate import upgrade
+# --- END: Import the upgrade command ---
 
 # Import models to ensure they are registered with SQLAlchemy
 from .models.user import User
@@ -25,6 +28,11 @@ def create_app():
     login_manager.login_view = 'auth.login'
     
     commands.init_app(app)
+
+    # --- START: Run migrations within the application context ---
+    with app.app_context():
+        upgrade()
+    # --- END: Run migrations within the application context ---
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -80,4 +88,3 @@ def create_app():
         return redirect(url_for('project.get_projects'))
    
     return app
-
