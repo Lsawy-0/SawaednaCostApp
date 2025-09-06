@@ -5,7 +5,7 @@
       "src": "index.py",
       "use": "@vercel/python",
       "config": {
-        "command": "flask db upgrade"
+        "prelude": "flask db upgrade"
       }
     }
   ],
