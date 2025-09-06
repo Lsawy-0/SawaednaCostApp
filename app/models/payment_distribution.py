@@ -9,7 +9,7 @@ class PaymentDistribution(db.Model):
     amount = db.Column(db.Float, nullable=False)
 
     # Foreign Keys
-    payment_id = db.Column(db.Integer, db.ForeignKey('payment.id'), nullable=False, index=True)
+    payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=False, index=True)
     invoice_item_id = db.Column(db.Integer, db.ForeignKey('invoice_item.id'), nullable=False, index=True)
 
     # Relationships
