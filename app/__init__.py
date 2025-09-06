@@ -30,8 +30,8 @@ def create_app():
     commands.init_app(app)
 
     # --- START: Run migrations within the application context ---
-    # with app.app_context():
-    #     upgrade()
+    with app.app_context():
+         upgrade()
     # --- END: Run migrations within the application context ---
 
     @login_manager.user_loader
